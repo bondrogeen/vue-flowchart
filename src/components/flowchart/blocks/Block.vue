@@ -5,9 +5,7 @@
     @mouseover="hover = true"
     @mouseleave="hover = false"
   >
-    <div :class="['block__header', type.toLowerCase()]">
-      {{ name }} {{ selected }}
-    </div>
+    <div :class="['block__header', type.toLowerCase()]">{{ name }} {{ selected }}</div>
     <div class="block__inputs">
       <div
         v-for="(slot, index) in inputs"
@@ -35,7 +33,7 @@
 
 <script>
 export default {
-  name: "Block",
+  name: 'Block',
   props: {
     id: {
       type: Number,
@@ -61,7 +59,7 @@ export default {
   data: () => ({
     hover: false,
     hasDragged: false,
-    typeLink: ["bottom", "right", "left"],
+    typeLink: ['bottom', 'right', 'left'],
     mouseX: 0,
     mouseY: 0,
     lastMouseX: 0,
@@ -72,26 +70,26 @@ export default {
   computed: {
     style() {
       return {
-        left: this.options.x + this.position[0] * this.options.scale + "px",
-        top: this.options.y + this.position[1] * this.options.scale + "px",
-        width: this.options.width + "px",
-        transform: "scale(" + (this.options.scale + "") + ")",
-        transformOrigin: "top left",
+        left: this.options.x + this.position[0] * this.options.scale + 'px',
+        top: this.options.y + this.position[1] * this.options.scale + 'px',
+        width: this.options.width + 'px',
+        transform: 'scale(' + (this.options.scale + '') + ')',
+        transformOrigin: 'top left',
         zIndex: this.selected || this.hover ? 10 : 1,
       };
     },
   },
   mounted() {
     const doc = document.documentElement;
-    doc.addEventListener("mousemove", this.handleMove, true);
-    doc.addEventListener("mousedown", this.handleDown, true);
-    doc.addEventListener("mouseup", this.handleUp, true);
+    doc.addEventListener('mousemove', this.handleMove, true);
+    doc.addEventListener('mousedown', this.handleDown, true);
+    doc.addEventListener('mouseup', this.handleUp, true);
   },
   beforeDestroy() {
     const doc = document.documentElement;
-    doc.removeEventListener("mousemove", this.handleMove, true);
-    doc.removeEventListener("mousedown", this.handleDown, true);
-    doc.removeEventListener("mouseup", this.handleUp, true);
+    doc.removeEventListener('mousemove', this.handleMove, true);
+    doc.removeEventListener('mousedown', this.handleDown, true);
+    doc.removeEventListener('mouseup', this.handleUp, true);
   },
   methods: {
     handleMove(e) {
@@ -113,16 +111,19 @@ export default {
       this.lastMouseY = this.mouseY;
       const target = e.target || e.srcElement;
       if (this.$el.contains(target) && e.which === 1) {
+        console.log('hasDragged', this.hasDragged);
+        console.log('dragging', this.dragging);
         this.dragging = true;
-        this.$emit("select");
+        this.$emit('select');
         if (e.preventDefault) e.preventDefault();
       }
     },
     handleUp() {
+      console.log('sdsdsdsdsdsd');
       if (this.dragging) {
         this.dragging = false;
         if (this.hasDragged) {
-          this.$emit("moveBlock");
+          this.$emit('moveBlock');
           this.hasDragged = false;
         }
       }
@@ -132,22 +133,24 @@ export default {
     },
     slotMouseDown(e, index) {
       this.linking = true;
-      this.$emit("linkingStart", index);
+      this.$emit('linkingStart', index);
       if (e.preventDefault) e.preventDefault();
     },
     slotMouseUp(e, index) {
-      this.$emit("linkingStop", index);
+      this.$emit('linkingStop', index);
       if (e.preventDefault) e.preventDefault();
     },
     slotBreak(e, index) {
       this.linking = true;
-      this.$emit("linkingBreak", index);
+      this.$emit('linkingBreak', index);
       if (e.preventDefault) e.preventDefault();
     },
     moveWithDiff(diffX, diffY) {
-      let left = this.position[0] + diffX / this.options.scale;
-      let top = this.position[1] + diffY / this.options.scale;
-      this.$emit("position", [left, top]);
+      if (this.selected) {
+        let left = diffX / this.options.scale;
+        let top = diffY / this.options.scale;
+        this.$emit('position', { left, top });
+      }
     },
   },
 };
@@ -166,9 +169,10 @@ $circleConnectedColor: #569dcf;
   background: #bfbfbf;
   z-index: 1;
   opacity: 0.9;
-  cursor: move;
+  cursor: default;
   &--selected {
     background: #ac2b2b !important;
+    cursor: move;
   }
   &__header {
     min-height: 42px;

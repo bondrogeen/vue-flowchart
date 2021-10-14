@@ -2,7 +2,7 @@
   <div class="toolbar">
     <div @click="add">+</div>
     <div>-</div>
-    <div>\</div>
+    <div @click="clone">||</div>
   </div>
 </template>
 
@@ -12,6 +12,9 @@ export default {
   methods: {
     add() {
       this.$store.dispatch("blocks/add", { type: "Input" });
+    },
+    clone() {
+      this.$store.dispatch("blocks/cloneAll", {});
     },
   },
 };

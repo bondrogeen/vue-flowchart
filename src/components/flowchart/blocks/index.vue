@@ -1,5 +1,5 @@
 <template>
-  <div class="blocks">
+  <div class="blocks" @contextmenu="contextmenu">
     <Net class="blocks__center" :x="centerX" :y="centerY" :scale="scale" />
     <Link class="blocks__lines" :lines="lines" />
     <Block
@@ -13,8 +13,9 @@
       @linkingStop="linkingStop(block, $event)"
       @linkingBreak="linkingBreak(block, $event)"
       @select="blockSelect(block)"
-      @position="position(block, $event)"
+      @position="position($event)"
     />
+    <Menu v-bind="menu" @event="event" />
   </div>
 </template>
 
@@ -27,9 +28,11 @@ export default {
     Block: () => import('./Block'),
     Link: () => import('./Link'),
     Net: () => import('./Net'),
+    Menu: () => import('./ContextMenu'),
   },
   props: {},
   data: () => ({
+    menu: false,
     dragging: false,
     centerX: 0,
     centerY: 0,
@@ -47,6 +50,14 @@ export default {
     inputSlotClassName: 'inputSlot',
   }),
   computed: {
+    keyEvent: {
+      set(value) {
+        this.$store.dispatch('blocks/setKeyEvent', value);
+      },
+      get() {
+        return this.$store.getters['blocks/getKeyEvent'];
+      },
+    },
     blocks: {
       set(value) {
         this.$store.dispatch('blocks/setBlocks', value);
@@ -139,15 +150,24 @@ export default {
     },
   },
   methods: {
+    event(e) {
+      console.log(e);
+    },
+    contextmenu(e) {
+      e.preventDefault();
+      console.log(e.clientX, e.clientY);
+      this.menu = { x: e.clientX, y: e.clientY };
+    },
     handleMauseOver(e) {
       this.mouseIsOver = e.type === 'mouseenter';
     },
     keyup(event) {
+      this.keyEvent = event;
       const { code, ctrlKey } = event;
       const mouseIsOver = this.mouseIsOver;
-      console.log(mouseIsOver, code);
+      console.log(event);
       if (mouseIsOver && code === 'Delete') {
-        // this.blockDelete(this.selected);
+        this.$store.dispatch('blocks/removeSelected');
       }
       if (mouseIsOver && code === 'KeyC' && ctrlKey) {
         // this.blockDelete(this.selectedBlock);
@@ -208,6 +228,10 @@ export default {
     },
     handleDown(e) {
       console.log('handleDown');
+      if (this.menu.x) {
+        this.menu = {};
+        return;
+      }
       const target = e.target || e.srcElement;
       if ((target === this.$el || target.matches('svg, svg *')) && e.which === 1) {
         this.dragging = true;
@@ -216,7 +240,9 @@ export default {
         this.mouseY = mouse.y;
         this.lastMouseX = this.mouseX;
         this.lastMouseY = this.mouseY;
-        this.$store.dispatch('blocks/deselect');
+        if (!this.keyEvent?.ctrlKey) {
+          this.blockDeselect();
+        }
         if (e.preventDefault) e.preventDefault();
       }
     },
@@ -301,7 +327,6 @@ export default {
     },
     linkingStart(block, slot) {
       console.log('linkingStart');
-      // block.outputs[slot].active = true
       this.linkStart = { block, slot };
       let linkStartPos = this.getConnectionPos(block, slot, false);
       this.tempLink = {
@@ -376,18 +401,28 @@ export default {
         }
       }
     },
-    position(block, event) {
-      // console.log(block, event)
-      block.position = event;
+
+    position({ left, top }) {
+      if (!this.keyEvent.ctrlKey) {
+        this.blocks.forEach(block => {
+          const [x, y] = block.position;
+          block.position = block.selected ? [x + left, y + top] : [x, y];
+        });
+      }
     },
-    blockSelect(block) {
-      this.$store.dispatch('blocks/deselect', block);
-      this.$nextTick(() => {
-        this.$store.dispatch('blocks/select', block);
-      });
+
+    blockSelect({ id, selected }) {
+      // this.$store.dispatch('blocks/deselect', block);
+      // console.log(id, selected);
+      if (!selected || this.keyEvent.ctrlKey) {
+        this.$nextTick(() => {
+          this.$store.dispatch('blocks/select', { id });
+        });
+      }
     },
-    blockDeselect(block) {
-      this.$emit('blockDeselect', block);
+
+    blockDeselect() {
+      this.$store.dispatch('blocks/deselect');
     },
 
     updateModel() {
@@ -399,6 +434,7 @@ export default {
     const doc = document.documentElement;
     this.$el.addEventListener('mouseenter', this.handleMauseOver);
     this.$el.addEventListener('mouseleave', this.handleMauseOver);
+    doc.addEventListener('keydown', this.keyup);
     doc.addEventListener('keyup', this.keyup);
     doc.addEventListener('mousemove', this.handleMove, true);
     doc.addEventListener('mousedown', this.handleDown, true);
@@ -411,6 +447,7 @@ export default {
     const doc = document.documentElement;
     this.$el.removeEventListener('mouseenter', this.handleMauseOver);
     this.$el.removeEventListener('mouseleave', this.handleMauseOver);
+    doc.removeEventListener('keydown', this.keyup);
     doc.removeEventListener('keyup', this.keyup);
     doc.removeEventListener('mousemove', this.handleMove, true);
     doc.removeEventListener('mousedown', this.handleDown, true);

@@ -14,10 +14,10 @@
 
 <script>
 export default {
-  name: "Flowchart",
+  name: 'Flowchart',
   components: {
-    Toolbar: () => import("@/components/flowchart/toolbar/Toolbar"),
-    Blocks: () => import("@/components/flowchart/blocks"),
+    Toolbar: () => import('@/components/flowchart/toolbar/Toolbar'),
+    Blocks: () => import('@/components/flowchart/blocks'),
   },
 };
 </script>
@@ -32,6 +32,7 @@ export default {
   width: 100%;
   height: 100%;
   display: flex;
+  user-select: none;
   &__toolbar {
     flex: 0 0 50px;
     border-right: 1px solid black;
