@@ -32,6 +32,7 @@ export default {
   },
   props: {},
   data: () => ({
+    save: [],
     menu: false,
     dragging: false,
     centerX: 0,
@@ -152,6 +153,10 @@ export default {
   methods: {
     event(e) {
       console.log(e);
+      if (e === 'clone') {
+        this.$store.dispatch('blocks/cloneAll');
+      }
+      this.menu = {}
     },
     contextmenu(e) {
       e.preventDefault();
@@ -169,7 +174,20 @@ export default {
       if (mouseIsOver && code === 'Delete') {
         this.$store.dispatch('blocks/removeSelected');
       }
+      if (mouseIsOver && code === 'KeyA' && ctrlKey) {
+        this.blocks.forEach(block => {
+          block.selected = true
+        })
+      }
       if (mouseIsOver && code === 'KeyC' && ctrlKey) {
+        this.save = this.blocks.filter(block => block.selected)
+        // this.blockDelete(this.selectedBlock);
+      }
+      if (mouseIsOver && code === 'KeyV' && ctrlKey) {
+        this.save.forEach(block => {
+          this.$store.dispatch('blocks/clone', block);
+        })
+        // this.$store.dispatch('blocks/clone', );
         // this.blockDelete(this.selectedBlock);
       }
     },
@@ -228,10 +246,11 @@ export default {
     },
     handleDown(e) {
       console.log('handleDown');
-      if (this.menu.x) {
-        this.menu = {};
-        return;
-      }
+      console.log(e);
+      // if (e.target.className !== 'menu__item') {
+      //   this.menu = {};
+      //   return;
+      // }
       const target = e.target || e.srcElement;
       if ((target === this.$el || target.matches('svg, svg *')) && e.which === 1) {
         this.dragging = true;
@@ -413,7 +432,7 @@ export default {
 
     blockSelect({ id, selected }) {
       // this.$store.dispatch('blocks/deselect', block);
-      // console.log(id, selected);
+      console.log(id, selected);
       if (!selected || this.keyEvent.ctrlKey) {
         this.$nextTick(() => {
           this.$store.dispatch('blocks/select', { id });
