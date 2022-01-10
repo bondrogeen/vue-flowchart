@@ -2,20 +2,16 @@
   <div class="toolbar">
     <div @click="add">+</div>
     <div>-</div>
-    <div @click="clone">||</div>
+    <div @click="cloneAll">||</div>
   </div>
 </template>
 
 <script>
+import { mapActions } from 'vuex';
 export default {
-  name: "toolbar",
+  name: 'toolbar',
   methods: {
-    add() {
-      this.$store.dispatch("blocks/add", { type: "Input" });
-    },
-    clone() {
-      this.$store.dispatch("blocks/cloneAll", {});
-    },
+    ...mapActions('blocks', ['add', 'cloneAll']),
   },
 };
 </script>

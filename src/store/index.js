@@ -10,4 +10,5 @@ export default new Vuex.Store({
   modules: {
     blocks,
   },
+  strict: true
 });

@@ -15,20 +15,25 @@
       @select="blockSelect(block)"
       @position="position($event)"
     />
-    <Menu v-bind="menu" @event="event" />
+    <Menu v-bind="menu" @click="event" />
   </div>
 </template>
 
 <script>
+import { mapActions, mapGetters } from 'vuex';
 import { mouseHelper } from './utils';
+import Block from './Block';
+import Link from './Link';
+import Net from './Net';
+import Menu from './ContextMenu';
 
 export default {
   name: 'Blocks',
   components: {
-    Block: () => import('./Block'),
-    Link: () => import('./Link'),
-    Net: () => import('./Net'),
-    Menu: () => import('./ContextMenu'),
+    Block,
+    Link,
+    Net,
+    Menu,
   },
   props: {},
   data: () => ({
@@ -51,36 +56,21 @@ export default {
     inputSlotClassName: 'inputSlot',
   }),
   computed: {
+    ...mapGetters({
+      getKeyEvent: 'blocks/getKeyEvent',
+      blocks: 'blocks/getBlocks',
+      links: 'blocks/getLinks',
+    }),
     keyEvent: {
       set(value) {
-        this.$store.dispatch('blocks/setKeyEvent', value);
+        this.setKeyEvent(value);
       },
       get() {
-        return this.$store.getters['blocks/getKeyEvent'];
-      },
-    },
-    blocks: {
-      set(value) {
-        this.$store.dispatch('blocks/setBlocks', value);
-      },
-      get() {
-        return this.$store.getters['blocks/getBlocks'];
-      },
-    },
-    links: {
-      set(value) {
-        console.log(value);
-        this.$store.dispatch('blocks/setLinks', value);
-      },
-      get() {
-        return this.$store.getters['blocks/getLinks'];
+        return this.getKeyEvent;
       },
     },
     optionsForChild() {
       return {
-        width: 180,
-        titleHeight: 42,
-        inputSlotClassName: this.inputSlotClassName,
         scale: this.scale,
         x: this.centerX,
         y: this.centerY,
@@ -97,31 +87,23 @@ export default {
     lines() {
       let lines = [];
       for (let link of this.links) {
-        let originBlock = this.blocks.find(block => {
-          return block.id === link.originID;
-        });
-        let targetBlock = this.blocks.find(block => {
-          return block.id === link.targetID;
-        });
-        if (!originBlock || !targetBlock) {
-          console.log('Remove invalid link', link);
-          this.$store.dispatch('blocks/removeLink', link.id);
-          continue;
-        }
-        if (originBlock.id === targetBlock.id) {
-          console.log('Loop detected, remove link', link);
-          this.$store.dispatch('blocks/removeLink', link.id);
+        let originBlock = this.blocks.find(({ id }) => id === link.originID);
+        let targetBlock = this.blocks.find(({ id }) => id === link.targetID);
+        if (!originBlock || !targetBlock || originBlock.id === targetBlock.id) {
+          console.warn('Remove invalid link', link);
+          this.removeLink(link.id);
           continue;
         }
         let originLinkPos = this.getConnectionPos(originBlock, link.originSlot, false);
         let targetLinkPos = this.getConnectionPos(targetBlock, link.targetSlot, true);
         if (!originLinkPos || !targetLinkPos) {
           console.log('Remove invalid link (slot not exist)', link);
-          this.$store.dispatch('blocks/removeLink', link.id);
+          this.removeLink(link.id);
           continue;
         }
         let { x: x1, y: y1 } = originLinkPos;
         let { x: x2, y: y2 } = targetLinkPos;
+
         lines.push({
           x1,
           y1,
@@ -151,12 +133,22 @@ export default {
     },
   },
   methods: {
+    ...mapActions({
+      cloneAll: 'blocks/cloneAll',
+      remove: 'blocks/remove',
+      clone: 'blocks/clone',
+      select: 'blocks/select',
+      setKeyEvent: 'blocks/setKeyEvent',
+      deselect: 'blocks/deselect',
+      position: 'blocks/position',
+      update: 'blocks/update',
+      addLink: 'blocks/addLink',
+      updateLink: 'blocks/updateLink',
+      removeLink: 'blocks/removeLink',
+    }),
     event(e) {
       console.log(e);
-      if (e === 'clone') {
-        this.$store.dispatch('blocks/cloneAll');
-      }
-      this.menu = {}
+      this.menu = {};
     },
     contextmenu(e) {
       e.preventDefault();
@@ -171,48 +163,28 @@ export default {
       const { code, ctrlKey } = event;
       const mouseIsOver = this.mouseIsOver;
       console.log(event);
-      if (mouseIsOver && code === 'Delete') {
-        this.$store.dispatch('blocks/removeSelected');
+      if (event.type === 'keyup') {
+        if (mouseIsOver && code === 'Delete') {
+          this.remove();
+        }
+        if (mouseIsOver && code === 'KeyA' && ctrlKey) {
+          this.deselect(true);
+        }
+        if (mouseIsOver && code === 'KeyC' && ctrlKey) {
+          this.save = this.blocks.filter(block => block.selected);
+        }
+        if (mouseIsOver && code === 'KeyX' && ctrlKey) {
+          this.save = JSON.parse(JSON.stringify(this.blocks.filter(block => block.selected)));
+          console.log(this.save);
+          this.remove();
+        }
+        if (mouseIsOver && code === 'KeyV' && ctrlKey) {
+          this.deselect();
+          this.save.forEach(block => {
+            this.clone(block);
+          });
+        }
       }
-      if (mouseIsOver && code === 'KeyA' && ctrlKey) {
-        this.blocks.forEach(block => {
-          block.selected = true
-        })
-      }
-      if (mouseIsOver && code === 'KeyC' && ctrlKey) {
-        this.save = this.blocks.filter(block => block.selected)
-        // this.blockDelete(this.selectedBlock);
-      }
-      if (mouseIsOver && code === 'KeyV' && ctrlKey) {
-        this.save.forEach(block => {
-          this.$store.dispatch('blocks/clone', block);
-        })
-        // this.$store.dispatch('blocks/clone', );
-        // this.blockDelete(this.selectedBlock);
-      }
-    },
-    zoom(value) {
-      if (value === 0) {
-        this.scale = 1;
-        this.centerX = this.$el.clientWidth / 2;
-        this.centerY = this.$el.clientHeight / 2;
-        return;
-      }
-      let deltaScale = value === 1 ? 1.1 : 0.9090909090909091;
-      this.scale *= deltaScale;
-      if (this.scale < this.minScale) {
-        this.scale = this.minScale;
-        return;
-      } else if (this.scale > this.maxScale) {
-        this.scale = this.maxScale;
-        return;
-      }
-      let deltaOffsetX = (this.$el.clientWidth / 2 - this.centerX) * (deltaScale - 1);
-      let deltaOffsetY = (this.$el.clientHeight / 2 - this.centerY) * (deltaScale - 1);
-      this.centerX -= deltaOffsetX;
-      this.centerY -= deltaOffsetY;
-
-      // this.updateScene();
     },
     handleMove(e) {
       let mouse = mouseHelper(this.$el, e);
@@ -247,10 +219,6 @@ export default {
     handleDown(e) {
       console.log('handleDown');
       console.log(e);
-      // if (e.target.className !== 'menu__item') {
-      //   this.menu = {};
-      //   return;
-      // }
       const target = e.target || e.srcElement;
       if ((target === this.$el || target.matches('svg, svg *')) && e.which === 1) {
         this.dragging = true;
@@ -260,7 +228,7 @@ export default {
         this.lastMouseX = this.mouseX;
         this.lastMouseY = this.mouseY;
         if (!this.keyEvent?.ctrlKey) {
-          this.blockDeselect();
+          this.deselect();
         }
         if (e.preventDefault) e.preventDefault();
       }
@@ -309,27 +277,19 @@ export default {
       let y = 0;
       x += block.position[0];
       y += block.position[1];
+       const { width = 0, heigth = 0 } = this.$refs?.['block_' + block.id]?.[0]?.getH() || {};
       if (isInput && block.inputs.length > slot) {
+
         if (block.inputs.length === 1) {
-          x += this.optionsForChild.width / 2;
+          x += width / 2;
           y += -3;
-        } else {
-          x += this.optionsForChild.width / 2 - (block.inputs.length * 10) / 2;
-          x += 20 * slot;
-        }
+        } 
       } else if (!isInput && block.outputs.length > slot) {
         if (slot === 0) {
-          x += this.optionsForChild.width / 2;
-          // console.log()
-          // y += this.$refs?.['block_' + block.id]?.[0]?.getHeight();
-          y += 45;
-        }
-        if (slot === 1) {
-          x += this.optionsForChild.width;
-          y += 25;
-        }
-        if (slot === 2) {
-          y += 25;
+          x += width / 2; 
+          // y += this.$refs?.['block_' + block.id]?.[0]?.getHeight() || 45;
+          // console.log(this.$refs?.['block_' + block.id]?.[0].getH());
+          y += heigth;
         }
       } else {
         console.error('slot ' + slot + ' not found, is input: ' + isInput, block);
@@ -362,6 +322,7 @@ export default {
       this.linking = true;
     },
     linkingStop(target, slot) {
+      console.log('linkingStop');
       if (this.linkStart && target && slot > -1) {
         const {
           slot: originSlot,
@@ -369,7 +330,7 @@ export default {
         } = this.linkStart;
         const targetID = target.id;
         const targetSlot = slot;
-        this.links = this.links.filter(line => {
+        const links = this.links.filter(line => {
           return (
             !(
               line.targetID === targetID &&
@@ -383,6 +344,7 @@ export default {
             )
           );
         });
+        this.updateLink(links);
 
         let maxID = Math.max(0, ...this.links.map(o => o.id));
         if (this.linkStart.block.id !== target.id) {
@@ -391,7 +353,7 @@ export default {
           const targetID = target.id;
           const targetSlot = slot;
 
-          this.links.push({
+          this.addLink({
             id: maxID + 1,
             originID,
             originSlot,
@@ -412,9 +374,10 @@ export default {
         let findLink = this.links.find(({ targetID, targetSlot }) => targetID === target.id && targetSlot === slot);
         if (findLink) {
           let findBlock = this.blocks.find(({ id }) => id === findLink.originID);
-          this.links = this.links.filter(
+          const links = this.links.filter(
             ({ targetID, targetSlot }) => !(targetID === target.id && targetSlot === slot)
           );
+          this.updateLink(links);
           this.linkingStart(findBlock, findLink.originSlot);
           this.updateModel();
         }
@@ -423,25 +386,22 @@ export default {
 
     position({ left, top }) {
       if (!this.keyEvent.ctrlKey) {
-        this.blocks.forEach(block => {
-          const [x, y] = block.position;
-          block.position = block.selected ? [x + left, y + top] : [x, y];
+        const update = this.blocks.map(b => {
+          const [x, y] = b.position;
+          const position = b.selected ? [x + left, y + top] : [x, y];
+          return { ...b, position };
         });
+        this.update(update);
       }
     },
 
     blockSelect({ id, selected }) {
-      // this.$store.dispatch('blocks/deselect', block);
       console.log(id, selected);
       if (!selected || this.keyEvent.ctrlKey) {
-        this.$nextTick(() => {
-          this.$store.dispatch('blocks/select', { id });
-        });
+        // this.$nextTick(() => {
+        this.select({ id });
+        // });
       }
-    },
-
-    blockDeselect() {
-      this.$store.dispatch('blocks/deselect');
     },
 
     updateModel() {

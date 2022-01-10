@@ -5,15 +5,9 @@ export default {
   state: () => ({
     blocks: [new Block({ id: 1 }), new Block({ id: 3 }), new Block({ id: 2 })],
     links: [],
-    keyEvent: {}
+    key: {}
   }),
   mutations: {
-    SET_ERRORS_BLOCKS (state, value) {
-      state.errorsBlocks = value
-    },
-    SET_ERRORS_FIELDS (state, value) {
-      state.errorsFields = value
-    },
     SET_BLOCKS (state, value) {
       state.blocks = value;
     },
@@ -21,7 +15,7 @@ export default {
       state.links = value;
     },
     SET_KEY_EVENT (state, value) {
-      state.keyEvent = value;
+      state.key = value;
     },
   },
   actions: {
@@ -32,68 +26,62 @@ export default {
       commit('SET_BLOCKS', [...blocks, block]);
     },
 
-    remove ({ dispatch, commit, state: { blocks } }, block) {
-      if (block) {
-        dispatch('removeLinkToBlock', block);
-        commit('SET_BLOCKS', [...blocks.filter(b => b.id !== block.id)]);
-      }
+    update ({ commit }, blocks) {
+      commit('SET_BLOCKS', [...blocks]);
     },
 
-    removeSelected ({ dispatch, state: { blocks } }) {
-      blocks.forEach(block => {
-        if (block.selected) {
-          dispatch('remove', block);
-          block.selected = false
-        }
-      })
+    remove ({ dispatch, commit, state: { blocks } }, block) {
+      const all = block ? [block.id] : blocks.filter(b => b.selected).map(b => b.id)
+      dispatch('removeLinkToBlock', all);
+      commit('SET_BLOCKS', [...blocks.filter(b => !all.includes(b.id))]);
     },
 
     clone ({ commit, state: { blocks } }, oldBlock) {
       let id = Math.max(0, ...blocks.map(o => o.id)) + 1;
       const block = JSON.parse(JSON.stringify(oldBlock))
       block.id = id
+      const [x, y] = block.position
+      block.position = [ x + 5, y + 5 ]
       commit('SET_BLOCKS', [...blocks, block]);
     },
 
     cloneAll ({ dispatch, state: { blocks } }) {
-      blocks.forEach(block => {
-        if (block.selected) {
-          dispatch('clone', block);
-          block.selected = false
-        }
+      const all = blocks.filter(b => b.selected)
+      all.forEach(b => {
+        dispatch('clone', b);
       })
+      dispatch('deselect');
     },
 
-    select ({ commit, state: { blocks, keyEvent: { ctrlKey } } }, { id }) {
-      blocks.map((b) => b.selected = !ctrlKey ? b.id === id : (b.id === id) ? b.selected = !b.selected : b.selected)
-      commit('SET_BLOCKS', [...blocks]);
+    select ({ commit, state: { blocks, key: { ctrlKey } } }, { id }) {
+      const update = blocks.map((b) => {
+        const selected = !ctrlKey ? b.id === id : (b.id === id) ? !b.selected : b.selected
+        return { ...b, selected }
+      })
+      commit('SET_BLOCKS', [...update]);
     },
 
-    deselect ({ commit, state: { blocks } }) {
-      blocks.forEach(item =>
-        item.selected = false
-      )
-      commit('SET_BLOCKS', [...blocks]);
+    deselect ({ commit, state: { blocks } }, value = false) {
+      const update = blocks.map(b => {
+        const selected = value
+        return { ...b, selected }
+      })
+      commit('SET_BLOCKS', [...update]);
     },
-    setBlock ({ commit, state: { blocks } }, value) {
-      const index = blocks.findIndex(item => item.id == value.id);
-      blocks[index] = value;
-      commit('SET_BLOCKS', [...blocks]);
-    },
-    setBlocks ({ commit }, value) {
-      commit('SET_BLOCKS', [...value]);
-    },
-
 
     // LINKS__________________________________________
+
+    addLink ({ commit, state: { links } }, link) {
+      commit('SET_LINKS', [...links, link]);
+    },
+    updateLink ({ commit }, links) {
+      commit('SET_LINKS', [...links]);
+    },
     removeLink ({ commit, state: { links } }, id) {
       commit('SET_LINKS', [...links.filter(value => value.id !== id)]);
     },
-    removeLinkToBlock ({ commit, state: { links } }, block) {
-      commit('SET_LINKS', [...links.filter(link => (link.originID !== block.id && link.targetID !== block.id))]);
-    },
-    setLinks ({ commit }, value) {
-      commit('SET_LINKS', [...value]);
+    removeLinkToBlock ({ commit, state: { links } }, arr) {
+      commit('SET_LINKS', [...links.filter(link => (!arr.includes(link.originID) && !arr.includes(link.targetID)))]);
     },
 
     setKeyEvent ({ commit }, value) {
@@ -102,7 +90,7 @@ export default {
   },
   getters: {
     getBlocks: ({ blocks }) => blocks,
-    getKeyEvent: ({ keyEvent }) => keyEvent,
+    getKeyEvent: ({ key }) => key,
     getLinks: ({ links }) => links,
     getBlock: ({ blocks }) => id => {
       const index = blocks.findIndex(item => item.id == id);

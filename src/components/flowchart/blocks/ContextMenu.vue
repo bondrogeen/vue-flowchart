@@ -1,9 +1,9 @@
 <template>
   <div :class="['context-menu', { 'context-menu--show': isTrue }]" :style="style">
     <ul class="menu">
-      <li class="menu__item" @click="click('clone')">First list item</li>
-      <li class="menu__item" @click="click('add')">Second list item</li>
-      <li class="menu__item" @click="click('test')">First list item</li>
+      <li class="menu__item" @click="click('add')">add</li>
+      <li class="menu__item" @click="click('clone')">clone</li>
+      <li class="menu__item" @click="click('test')">test</li>
     </ul>
   </div>
 </template>
@@ -28,7 +28,7 @@ export default {
   },
   methods: {
     click(e) {
-      this.$emit('event', e)
+      this.$emit('click', e)
     }
   }
 };

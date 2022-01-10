@@ -2,10 +2,10 @@
   <div
     :class="['block', { 'block--selected': selected }]"
     :style="style"
-    @mouseover="hover = true"
-    @mouseleave="hover = false"
+    @mouseover="onHover(true)"
+    @mouseleave="onHover(false)"
   >
-    <div :class="['block__header', type.toLowerCase()]">{{ name }} {{ selected }}</div>
+    <div :class="['block__header', type.toLowerCase()]">{{ name }} {{ id }}</div>
     <div class="block__inputs">
       <div
         v-for="(slot, index) in inputs"
@@ -72,7 +72,7 @@ export default {
       return {
         left: this.options.x + this.position[0] * this.options.scale + 'px',
         top: this.options.y + this.position[1] * this.options.scale + 'px',
-        width: this.options.width + 'px',
+        // width: this.options.width + 'px',
         transform: 'scale(' + (this.options.scale + '') + ')',
         transformOrigin: 'top left',
         zIndex: this.selected || this.hover ? 10 : 1,
@@ -81,18 +81,21 @@ export default {
   },
   mounted() {
     const doc = document.documentElement;
-    doc.addEventListener('mousemove', this.handleMove, true);
-    doc.addEventListener('mousedown', this.handleDown, true);
-    doc.addEventListener('mouseup', this.handleUp, true);
+    doc.addEventListener('mousemove', this.onMove, true);
+    doc.addEventListener('mousedown', this.onDown, true);
+    doc.addEventListener('mouseup', this.onUp, true);
   },
   beforeDestroy() {
     const doc = document.documentElement;
-    doc.removeEventListener('mousemove', this.handleMove, true);
-    doc.removeEventListener('mousedown', this.handleDown, true);
-    doc.removeEventListener('mouseup', this.handleUp, true);
+    doc.removeEventListener('mousemove', this.onMove, true);
+    doc.removeEventListener('mousedown', this.onDown, true);
+    doc.removeEventListener('mouseup', this.onUp, true);
   },
   methods: {
-    handleMove(e) {
+    onHover(value) {
+      this.hover = value;
+    },
+    onMove(e) {
       this.mouseX = e.pageX || e.clientX + document.documentElement.scrollLeft;
       this.mouseY = e.pageY || e.clientY + document.documentElement.scrollTop;
       if (this.dragging && !this.linking) {
@@ -104,7 +107,7 @@ export default {
         this.hasDragged = true;
       }
     },
-    handleDown(e) {
+    onDown(e) {
       this.mouseX = e.pageX || e.clientX + document.documentElement.scrollLeft;
       this.mouseY = e.pageY || e.clientY + document.documentElement.scrollTop;
       this.lastMouseX = this.mouseX;
@@ -118,7 +121,7 @@ export default {
         if (e.preventDefault) e.preventDefault();
       }
     },
-    handleUp() {
+    onUp() {
       console.log('sdsdsdsdsdsd');
       if (this.dragging) {
         this.dragging = false;
@@ -130,6 +133,12 @@ export default {
       if (this.linking) {
         this.linking = false;
       }
+    },
+    getH() {
+      return {
+        width: this.$el?.clientWidth,
+        heigth: this.$el?.clientHeight,
+      };
     },
     slotMouseDown(e, index) {
       this.linking = true;
@@ -169,6 +178,7 @@ $circleConnectedColor: #569dcf;
   background: #bfbfbf;
   z-index: 1;
   opacity: 0.9;
+  width: 300px;
   cursor: default;
   &--selected {
     background: #ac2b2b !important;
