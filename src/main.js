@@ -8,6 +8,9 @@ import '@/assets/scss/main.scss'
 
 Vue.config.productionTip = false;
 
+// import all directivs
+import directives from '@/utils/directives'
+directives.forEach(directive => Vue.directive(directive.name, directive))
 
 new Vue({
   router,

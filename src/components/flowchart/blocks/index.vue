@@ -1,5 +1,5 @@
 <template>
-  <div class="blocks" @contextmenu="contextmenu">
+  <div class="blocks" :key="key" @contextmenu="contextmenu">
     <Net class="blocks__center" :x="centerX" :y="centerY" :scale="scale" />
     <Link class="blocks__lines" :lines="lines" />
     <Block
@@ -15,7 +15,7 @@
       @select="blockSelect(block)"
       @position="position($event)"
     />
-    <Menu v-bind="menu" @click="event" />
+    <Menu v-bind="menu" :select="selectLength" @click="event" />
   </div>
 </template>
 
@@ -37,8 +37,9 @@ export default {
   },
   props: {},
   data: () => ({
+    key: 1,
     save: [],
-    menu: false,
+    menu: {},
     dragging: false,
     centerX: 0,
     centerY: 0,
@@ -60,6 +61,7 @@ export default {
       getKeyEvent: 'blocks/getKeyEvent',
       blocks: 'blocks/getBlocks',
       links: 'blocks/getLinks',
+      selectLength: 'blocks/getSelected',
     }),
     keyEvent: {
       set(value) {
@@ -112,7 +114,7 @@ export default {
           slot: link.originSlot,
           scale: this.scale,
           style: {
-            stroke: 'rgb(101, 185, 244)',
+            stroke: 'rgb(101, 0, 244)',
             strokeWidth: 2 * this.scale,
             fill: 'none',
             zIndex: 999,
@@ -133,22 +135,37 @@ export default {
     },
   },
   methods: {
-    ...mapActions({
-      cloneAll: 'blocks/cloneAll',
-      remove: 'blocks/remove',
-      clone: 'blocks/clone',
-      select: 'blocks/select',
-      setKeyEvent: 'blocks/setKeyEvent',
-      deselect: 'blocks/deselect',
-      position: 'blocks/position',
-      update: 'blocks/update',
-      addLink: 'blocks/addLink',
-      updateLink: 'blocks/updateLink',
-      removeLink: 'blocks/removeLink',
-    }),
-    event(e) {
-      console.log(e);
+    ...mapActions('blocks', [
+      'add',
+      'cloneAll',
+      'align',
+      'distance',
+      'remove',
+      'clone',
+      'select',
+      'setKeyEvent',
+      'deselect',
+      'position',
+      'update',
+      'addLink',
+      'updateLink',
+      'removeLink',
+    ]),
+    event(value) {
       this.menu = {};
+      console.log(value);
+      if (value === 'add') this.add({});
+      if (value === 'delete') this.remove();
+      if (value === 'clone') this.cloneAll();
+      if (value === 'left') this.align('ArrowLeft');
+      if (value === 'right') this.align('ArrowRight');
+      if (value === 'up') this.align('ArrowUp');
+      if (value === 'down') this.align('ArrowDown');
+      if (value === 'center') this.align('center');
+      if (value === 'vertical') this.distance('vertical');
+      if (value === 'horizon') this.distance('horizon');
+      if (value === 'select') this.deselect(true);
+      this.key += 1;
     },
     contextmenu(e) {
       e.preventDefault();
@@ -160,7 +177,7 @@ export default {
     },
     keyup(event) {
       this.keyEvent = event;
-      const { code, ctrlKey } = event;
+      const { code, ctrlKey, shiftKey } = event;
       const mouseIsOver = this.mouseIsOver;
       console.log(event);
       if (event.type === 'keyup') {
@@ -169,6 +186,15 @@ export default {
         }
         if (mouseIsOver && code === 'KeyA' && ctrlKey) {
           this.deselect(true);
+        }
+        if (mouseIsOver && ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp'].includes(code) && ctrlKey && !shiftKey) {
+          this.align(code);
+          this.key += 1;
+        }
+
+        if (mouseIsOver && ['ArrowUp'].includes(code) && ctrlKey && shiftKey) {
+          this.distance('vertical');
+          this.key += 1;
         }
         if (mouseIsOver && code === 'KeyC' && ctrlKey) {
           this.save = this.blocks.filter(block => block.selected);
@@ -277,16 +303,15 @@ export default {
       let y = 0;
       x += block.position[0];
       y += block.position[1];
-       const { width = 0, heigth = 0 } = this.$refs?.['block_' + block.id]?.[0]?.getH() || {};
+      const { width = 0, heigth = 0 } = this.$refs?.['block_' + block.id]?.[0]?.getH() || {};
       if (isInput && block.inputs.length > slot) {
-
         if (block.inputs.length === 1) {
           x += width / 2;
           y += -3;
-        } 
+        }
       } else if (!isInput && block.outputs.length > slot) {
         if (slot === 0) {
-          x += width / 2; 
+          x += width / 2;
           // y += this.$refs?.['block_' + block.id]?.[0]?.getHeight() || 45;
           // console.log(this.$refs?.['block_' + block.id]?.[0].getH());
           y += heigth;
@@ -398,9 +423,7 @@ export default {
     blockSelect({ id, selected }) {
       console.log(id, selected);
       if (!selected || this.keyEvent.ctrlKey) {
-        // this.$nextTick(() => {
         this.select({ id });
-        // });
       }
     },
 

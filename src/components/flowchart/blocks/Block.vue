@@ -5,7 +5,7 @@
     @mouseover="onHover(true)"
     @mouseleave="onHover(false)"
   >
-    <div :class="['block__header', type.toLowerCase()]">{{ name }} {{ id }}</div>
+    <div :class="['block__header', type.toLowerCase()]">{{ name }} <i class="ci-last_page"></i>{{ id }}</div>
     <div class="block__inputs">
       <div
         v-for="(slot, index) in inputs"
@@ -178,7 +178,7 @@ $circleConnectedColor: #569dcf;
   background: #bfbfbf;
   z-index: 1;
   opacity: 0.9;
-  width: 300px;
+  width: 100px;
   cursor: default;
   &--selected {
     background: #ac2b2b !important;

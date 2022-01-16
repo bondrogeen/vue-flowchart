@@ -3,7 +3,7 @@ import { Block } from '../const/blocks';
 export default {
   namespaced: true,
   state: () => ({
-    blocks: [new Block({ id: 1 }), new Block({ id: 3 }), new Block({ id: 2 })],
+    blocks: [new Block({ id: 1 }), new Block({ id: 3, position: [20, 20] }), new Block({ id: 2, position: [40, 40] })],
     links: [],
     key: {}
   }),
@@ -22,7 +22,7 @@ export default {
     // BLOCKS____________________________________________________
     add ({ commit, state: { blocks } }, { type, position }) {
       const id = Math.max(0, ...blocks.map(o => o.id)) + 1;
-      const block = new Block({ id, type, position })
+      const block = new Block({ id, type, position, selected: true })
       commit('SET_BLOCKS', [...blocks, block]);
     },
 
@@ -41,7 +41,7 @@ export default {
       const block = JSON.parse(JSON.stringify(oldBlock))
       block.id = id
       const [x, y] = block.position
-      block.position = [ x + 5, y + 5 ]
+      block.position = [x + 5, y + 5]
       commit('SET_BLOCKS', [...blocks, block]);
     },
 
@@ -65,6 +65,65 @@ export default {
       const update = blocks.map(b => {
         const selected = value
         return { ...b, selected }
+      })
+      commit('SET_BLOCKS', [...update]);
+    },
+
+    align ({ commit, state: { blocks } }, code) {
+      let tempX = null;
+      let tempY = null;
+      blocks.filter(i => i.selected).forEach(i => {
+        const [x, y] = i.position
+        if (code === 'ArrowLeft') {
+          if (!tempX || tempX > x) tempX = x
+        }
+        if (code === 'ArrowRight') {
+          if (!tempX || tempX < x) tempX = x
+        }
+        if (code === 'ArrowUp') {
+          if (!tempY || tempY > y) tempY = y
+        }
+        if (code === 'ArrowDown') {
+          if (!tempY || tempY < y) tempY = y
+        }
+      })
+      const update = blocks.map(b => {
+        if (b.selected) {
+          if (['ArrowLeft', 'ArrowRight'].includes(code)) {
+            b.position[0] = tempX
+          }
+          if (['ArrowUp', 'ArrowDown'].includes(code)) {
+            b.position[1] = tempY
+          }
+        }
+        return { ...b }
+      })
+      commit('SET_BLOCKS', [...update]);
+      // console.log(update)
+    },
+
+
+    distance ({ commit, state: { blocks } }) {
+      let min = null;
+      let max = null;
+      let number = 0;
+      blocks.filter(i => i.selected).forEach((i, index) => {
+        const [x, y] = i.position
+        if (!min || min < y) min = y
+        if (!max || max > y) max = y
+        number = ++index
+        console.log(x, y)
+      })
+
+      const length = Math.sqrt((max - min) ** 2)
+      const delta = length / number
+      let start = max
+      const update = blocks.map(b => {
+        if (b.selected) {
+          b.position[1] = start
+          start = start + delta
+        }
+        return { ...b }
       })
       commit('SET_BLOCKS', [...update]);
     },
@@ -96,5 +155,6 @@ export default {
       const index = blocks.findIndex(item => item.id == id);
       return blocks[index] || {};
     },
+    getSelected: ({ blocks }) => blocks.filter(i => i.selected).length
   },
 };
